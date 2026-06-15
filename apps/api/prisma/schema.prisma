@@ -9,5 +9,58 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Connection URL lives in prisma.config.ts (Prisma 7+); the runtime client
+  // connects via an adapter using DATABASE_URL.
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+  MAINTENANCE
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  // bcrypt/argon2 hash — never store plaintext.
+  password  String
+  name      String
+  role      Role     @default(USER)
+  devices   Device[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Device {
+  id           String       @id @default(cuid())
+  name         String
+  serialNumber String       @unique
+  status       DeviceStatus @default(OFFLINE)
+  description  String?
+  // Timestamp of the last status report, for tracking liveness.
+  lastSeenAt   DateTime?
+
+  // Owner relation (User 1 : N Device). Restrict prevents deleting a user
+  // who still owns devices — reassign or delete the devices first.
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  ownerId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([status])
 }
