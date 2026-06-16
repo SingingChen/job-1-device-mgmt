@@ -26,10 +26,4 @@ export class CreateDeviceDto {
   @IsString()
   @MaxLength(500)
   description?: string;
-
-  // Owner (User) id. Temporary: supplied by the client until JWT auth is added,
-  // after which it will be taken from the authenticated user instead.
-  @IsString()
-  @IsNotEmpty()
-  ownerId!: string;
 }
