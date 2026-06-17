@@ -23,8 +23,8 @@ on:
 
 env:
   REGION: asia-east1
-  SERVICE: device-api
-  REPO: containers
+  SERVICE: cleo-device-api
+  REPO: cleo-containers
 
 jobs:
   deploy:
@@ -63,6 +63,6 @@ jobs:
             --image "$IMAGE" \
             --service-account "${{ vars.RUNTIME_SA }}" \
             --add-cloudsql-instances "${{ vars.INSTANCE_CONNECTION_NAME }}" \
-            --set-secrets "DATABASE_URL=database-url:latest,JWT_SECRET=jwt-secret:latest" \
+            --set-secrets "DATABASE_URL=cleo-database-url:latest,JWT_SECRET=cleo-jwt-secret:latest" \
             --set-env-vars "JWT_EXPIRES_IN=1d" \
             --allow-unauthenticated
