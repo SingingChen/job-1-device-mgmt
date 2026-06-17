@@ -1,0 +1,68 @@
+name: Deploy API to Cloud Run
+
+# Build the API image and deploy it to Cloud Run on every push to master that
+# touches the API (or when triggered manually). Auth uses Workload Identity
+# Federation — no long-lived service-account key is stored in GitHub.
+#
+# Required repo Variables (Settings → Secrets and variables → Actions → Variables):
+#   GCP_PROJECT_ID            e.g. my-project
+#   WIF_PROVIDER              projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>
+#   DEPLOY_SA                 deploy SA email used by CI (has run.admin + AR writer + actAs runtime SA)
+#   RUNTIME_SA                runtime SA email the service runs as (has secretAccessor + cloudsql.client)
+#   INSTANCE_CONNECTION_NAME  project:region:instance
+# Secrets DATABASE_URL / JWT_SECRET live in GCP Secret Manager, NOT in GitHub.
+# See apps/api/deploy/github-actions-wif-setup.md for the one-time setup.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'apps/api/**'
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch:
+
+env:
+  REGION: asia-east1
+  SERVICE: device-api
+  REPO: containers
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required to mint the Workload Identity OIDC token
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build & push image
+        working-directory: apps/api
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${REPO}/${SERVICE}:${GITHUB_SHA}"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --region "$REGION" \
+            --image "$IMAGE" \
+            --service-account "${{ vars.RUNTIME_SA }}" \
+            --add-cloudsql-instances "${{ vars.INSTANCE_CONNECTION_NAME }}" \
+            --set-secrets "DATABASE_URL=database-url:latest,JWT_SECRET=jwt-secret:latest" \
+            --set-env-vars "JWT_EXPIRES_IN=1d" \
+            --allow-unauthenticated
