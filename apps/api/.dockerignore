@@ -1,0 +1,17 @@
+# Keep the build context small and secrets out of the image.
+node_modules
+dist
+coverage
+
+# Never ship local env / secrets.
+.env
+*.local
+
+# VCS / editor / logs
+.git
+.gitignore
+*.log
+
+# Tests are not needed in the production image.
+test
+**/*.spec.ts
