@@ -1,0 +1,57 @@
+name: Deploy Web to Firebase Hosting
+
+# Build the Vue app and deploy it to Firebase Hosting on every push to master
+# that touches the web app. Auth reuses the same Workload Identity Federation
+# setup as the API (no stored keys).
+#
+# Required repo Variables (reuse the API ones, plus WEB_API_BASE_URL):
+#   GCP_PROJECT_ID, WIF_PROVIDER, DEPLOY_SA   (shared with deploy-api.yml)
+#   WEB_API_BASE_URL  -> backend base URL baked into the build (VITE_API_BASE_URL)
+# The deploy SA (cleo-gha-deployer) needs roles/firebasehosting.admin.
+# See apps/web/deploy/firebase-setup.md for the one-time setup.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required to mint the Workload Identity OIDC token
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ vars.WEB_API_BASE_URL }}
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA }}
+
+      - name: Deploy to Firebase Hosting
+        run: >-
+          npx firebase-tools@13 deploy
+          --only hosting:cleo-device-mgmt
+          --project ${{ vars.GCP_PROJECT_ID }}
+          --non-interactive
