@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-ssr
+
+# Local env overrides (the committed .env holds only the non-secret API URL)
+*.local
+.env.local
+.env.*.local
+
+*.log
+.DS_Store
+.vite
