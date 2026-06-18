@@ -25,8 +25,8 @@ export SITE="cleo-device-mgmt"
 建立後網址為 `https://cleo-device-mgmt.web.app`。
 
 > site 名稱全球唯一;若被佔用,改名並同步更新 `apps/web/firebase.json`(`site` 欄位)與
-> `.github/workflows/deploy-web.yml` 內的 `cleo-device-mgmt`。專案以 `--project` 旗標帶入
-> (`WEB` 的 workflow 用 repo Variable `GCP_PROJECT_ID`),repo 內不寫死 project id。
+> `.github/workflows/deploy-web.yml` 內的 `cleo-device-mgmt`。預設 project 由
+> `apps/web/.firebaserc` 提供,CI 另以 `--project ${{ vars.GCP_PROJECT_ID }}` 明確帶入。
 
 ## 2. 授權部署 SA 部署 Hosting
 

@@ -18,8 +18,9 @@
 ## 為什麼這樣做
 
 - 重用後端既有的 WIF(`cleo-github` pool / `cleo-gha-deployer`),免金鑰、不必再建一套。
-- **不把 project id 寫進 repo**(repo 為 public):改用 `firebase.json` 的 `site` 欄位 +
-  workflow `--project ${{ vars.GCP_PROJECT_ID }}`,故不需 `.firebaserc`。
+- site 以 `firebase.json` 的 `site` 欄位指定;`.firebaserc` 僅設定預設 project
+  (`machine-status-494306`,該 id 在 dev-log/指南中已出現),CI 另以
+  `--project ${{ vars.GCP_PROJECT_ID }}` 明確帶入。
 - Hosting site 加 `cleo-` 前綴,避免與共用 Firebase 專案中同事的 site 撞名。
 - 前端為 SPA(vue-router history 模式),需 rewrites 讓深層路徑都回 `index.html`。
 
