@@ -8,5 +8,9 @@ export class ListDeviceQueryDto {
 
   @IsOptional()
   @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsString()
   ownerId?: string;
 }

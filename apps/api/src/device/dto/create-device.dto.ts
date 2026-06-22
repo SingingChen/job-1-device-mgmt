@@ -24,6 +24,11 @@ export class CreateDeviceDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(60)
+  category?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(500)
   description?: string;
 }

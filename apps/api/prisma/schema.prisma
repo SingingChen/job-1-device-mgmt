@@ -49,6 +49,8 @@ model Device {
   name         String
   serialNumber String       @unique
   status       DeviceStatus @default(OFFLINE)
+  // Free-form classification (e.g. 感測器 / 攝影機 / 網路設備).
+  category     String?
   description  String?
   // Timestamp of the last status report, for tracking liveness.
   lastSeenAt   DateTime?
@@ -63,4 +65,5 @@ model Device {
 
   @@index([ownerId])
   @@index([status])
+  @@index([category])
 }

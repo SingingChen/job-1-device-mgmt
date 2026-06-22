@@ -21,12 +21,15 @@ export class DeviceService {
     }
   }
 
-  findAll(user: AuthUser, filters: { status?: DeviceStatus; ownerId?: string }) {
+  findAll(
+    user: AuthUser,
+    filters: { status?: DeviceStatus; category?: string; ownerId?: string },
+  ) {
     // Non-admins are scoped to their own devices; admins may optionally filter
     // by ownerId, and otherwise see all.
     const ownerId = user.role === Role.ADMIN ? filters.ownerId : user.id;
     return this.prisma.device.findMany({
-      where: { status: filters.status, ownerId },
+      where: { status: filters.status, category: filters.category, ownerId },
       orderBy: { createdAt: 'desc' },
     });
   }
