@@ -14,7 +14,17 @@ function logout() {
 <template>
   <header class="border-b border-slate-200 bg-white">
     <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-      <h1 class="text-lg font-semibold text-slate-800">Device Management</h1>
+      <div class="flex items-center gap-6">
+        <h1 class="text-lg font-semibold text-slate-800">Device Management</h1>
+        <nav class="flex items-center gap-4 text-sm">
+          <RouterLink to="/dashboard" class="text-slate-500 hover:text-slate-800" active-class="font-medium text-indigo-600">
+            Dashboard
+          </RouterLink>
+          <RouterLink to="/devices" class="text-slate-500 hover:text-slate-800" active-class="font-medium text-indigo-600">
+            裝置
+          </RouterLink>
+        </nav>
+      </div>
       <div class="flex items-center gap-3 text-sm">
         <span class="text-slate-500">{{ auth.user?.email }}</span>
         <button
