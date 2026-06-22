@@ -39,8 +39,10 @@
 
 **小計:22 PASS / 0 FAIL。**
 
-> 重現方式:對 production API 以 curl 依序執行上述請求(使用一次性測試帳號與時間戳序號,
-> 可重複執行),比對 HTTP 狀態碼。
+> 重現方式:`cd apps/api && npm run test:scenarios`(預設打 production;
+> 打本機後端用 `API_BASE_URL=http://localhost:3000 npm run test:scenarios`)。
+> 腳本 `apps/api/test/scenarios.mjs` 使用一次性測試帳號與時間戳序號,可重複執行,
+> 任一項失敗則 exit code 非 0。
 
 ---
 
