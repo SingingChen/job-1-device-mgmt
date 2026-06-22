@@ -77,6 +77,7 @@ src/
 | `name` | String | 裝置名稱 |
 | `serialNumber` | String, unique | 序號(全域唯一) |
 | `status` | DeviceStatus | 預設 `OFFLINE` |
+| `category` | String? | 裝置類別(自由文字,可選),用於分類 |
 | `description` | String? | 選填 |
 | `lastSeenAt` | DateTime? | 最後回報時間(目前未自動更新) |
 | `owner` / `ownerId` | User 關聯 | 擁有者;`onDelete: Restrict`(還有裝置的 user 不可被刪) |
@@ -139,9 +140,9 @@ Body:`{ "email": "...", "password": "..." }`
 #### `POST /devices` — 建立裝置
 Body:
 ```json
-{ "name": "Sensor A", "serialNumber": "SN-001", "status": "ONLINE", "description": "選填" }
+{ "name": "Sensor A", "serialNumber": "SN-001", "status": "ONLINE", "category": "感測器", "description": "選填" }
 ```
-（`status`、`description` 選填;`status` 不給預設 `OFFLINE`）
+（`status`、`category`、`description` 選填;`status` 不給預設 `OFFLINE`）
 - 201:回傳建立的 Device(含 `ownerId` = 目前使用者)
 - 400:驗證失敗
 - 409:`serialNumber` 已存在
@@ -149,6 +150,7 @@ Body:
 #### `GET /devices` — 列出裝置
 Query(皆選填):
 - `status`:`ONLINE|OFFLINE|MAINTENANCE`
+- `category`:依類別篩選(精確比對)
 - `ownerId`:**僅 ADMIN 有效**(USER 一律只看自己的)
 - 200:Device 陣列(依 `createdAt` 由新到舊)
 
