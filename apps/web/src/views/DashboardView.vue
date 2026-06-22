@@ -23,6 +23,16 @@ const counts = computed(() => {
 // listDevices() returns newest first (createdAt desc), so the head is "recent".
 const recent = computed(() => devices.value.slice(0, 5))
 
+// Count devices per category (null category grouped as 未分類), sorted desc.
+const categoryCounts = computed(() => {
+  const m = new Map<string, number>()
+  for (const d of devices.value) {
+    const key = d.category ?? '未分類'
+    m.set(key, (m.get(key) ?? 0) + 1)
+  }
+  return [...m.entries()].sort((a, b) => b[1] - a[1])
+})
+
 const STATUS_META: Record<DeviceStatus, { label: string; card: string; badge: string }> = {
   ONLINE: { label: '線上', card: 'border-green-200 bg-green-50', badge: 'bg-green-100 text-green-700' },
   OFFLINE: { label: '離線', card: 'border-slate-200 bg-slate-50', badge: 'bg-slate-100 text-slate-600' },
@@ -82,6 +92,22 @@ onMounted(load)
           >
             <p class="text-sm text-slate-500">{{ STATUS_META[s].label }}</p>
             <p class="mt-1 text-3xl font-bold text-slate-800">{{ counts[s] }}</p>
+          </div>
+        </section>
+
+        <!-- Category breakdown -->
+        <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h3 class="mb-3 text-sm font-semibold text-slate-700">依類別</h3>
+          <p v-if="!categoryCounts.length" class="text-sm text-slate-400">尚無資料</p>
+          <div v-else class="flex flex-wrap gap-2">
+            <span
+              v-for="[cat, n] in categoryCounts"
+              :key="cat"
+              class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm"
+            >
+              <span class="text-slate-700">{{ cat }}</span>
+              <span class="rounded-full bg-indigo-100 px-2 text-xs font-medium text-indigo-700">{{ n }}</span>
+            </span>
           </div>
         </section>
 
