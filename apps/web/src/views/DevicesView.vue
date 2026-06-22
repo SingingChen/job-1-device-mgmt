@@ -9,6 +9,7 @@ import {
   listDevices,
   updateDevice,
 } from '@/lib/devices'
+import { useDeviceStream } from '@/lib/useDeviceStream'
 import { useAuthStore } from '@/stores/auth'
 import {
   DEVICE_CATEGORIES,
@@ -46,8 +47,8 @@ function handleError(e: unknown) {
   error.value = (e as Error).message
 }
 
-async function load() {
-  loading.value = true
+async function load(silent = false) {
+  if (!silent) loading.value = true
   error.value = ''
   try {
     devices.value = await listDevices({
@@ -57,7 +58,7 @@ async function load() {
   } catch (e) {
     handleError(e)
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
 
@@ -148,7 +149,9 @@ async function remove(device: Device) {
   }
 }
 
-onMounted(load)
+onMounted(() => load())
+// Live updates: refetch (silently) whenever the server pushes a device change.
+useDeviceStream(() => load(true))
 </script>
 
 <template>
@@ -185,11 +188,11 @@ onMounted(load)
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
           <h2 class="text-sm font-semibold text-slate-200">裝置列表</h2>
           <div class="flex items-center gap-2">
-            <select v-model="statusFilter" class="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 focus:border-indigo-400 focus:outline-none" @change="load">
+            <select v-model="statusFilter" class="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 focus:border-indigo-400 focus:outline-none" @change="load()">
               <option value="">全部狀態</option>
               <option v-for="s in DEVICE_STATUSES" :key="s" :value="s">{{ s }}</option>
             </select>
-            <select v-model="categoryFilter" class="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 focus:border-indigo-400 focus:outline-none" @change="load">
+            <select v-model="categoryFilter" class="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 focus:border-indigo-400 focus:outline-none" @change="load()">
               <option value="">全部類別</option>
               <option v-for="c in DEVICE_CATEGORIES" :key="c" :value="c">{{ c }}</option>
             </select>

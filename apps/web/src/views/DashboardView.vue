@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import { ApiError } from '@/lib/api'
 import { listDevices } from '@/lib/devices'
+import { useDeviceStream } from '@/lib/useDeviceStream'
 import { useAuthStore } from '@/stores/auth'
 import type { Device, DeviceStatus } from '@/types'
 
@@ -40,8 +41,8 @@ const STATUS_META: Record<DeviceStatus, { label: string; card: string; badge: st
 }
 const STATUS_ORDER: DeviceStatus[] = ['ONLINE', 'OFFLINE', 'MAINTENANCE']
 
-async function load() {
-  loading.value = true
+async function load(silent = false) {
+  if (!silent) loading.value = true
   error.value = ''
   try {
     devices.value = await listDevices()
@@ -53,11 +54,13 @@ async function load() {
     }
     error.value = (e as Error).message
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
 
-onMounted(load)
+onMounted(() => load())
+// Live updates: refetch (silently) whenever the server pushes a device change.
+useDeviceStream(() => load(true))
 </script>
 
 <template>
