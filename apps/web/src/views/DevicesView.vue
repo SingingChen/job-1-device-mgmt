@@ -10,7 +10,13 @@ import {
   updateDevice,
 } from '@/lib/devices'
 import { useAuthStore } from '@/stores/auth'
-import { DEVICE_STATUSES, type Device, type DeviceInput, type DeviceStatus } from '@/types'
+import {
+  DEVICE_CATEGORIES,
+  DEVICE_STATUSES,
+  type Device,
+  type DeviceInput,
+  type DeviceStatus,
+} from '@/types'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -19,6 +25,7 @@ const devices = ref<Device[]>([])
 const loading = ref(false)
 const error = ref('')
 const statusFilter = ref<DeviceStatus | ''>('')
+const categoryFilter = ref('')
 
 const STATUS_BADGE: Record<DeviceStatus, string> = {
   ONLINE: 'bg-green-100 text-green-700',
@@ -40,7 +47,10 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    devices.value = await listDevices(statusFilter.value || undefined)
+    devices.value = await listDevices({
+      status: statusFilter.value || undefined,
+      category: categoryFilter.value || undefined,
+    })
   } catch (e) {
     handleError(e)
   } finally {
@@ -53,6 +63,7 @@ const createForm = reactive<DeviceInput>({
   name: '',
   serialNumber: '',
   status: 'OFFLINE',
+  category: '',
   description: '',
 })
 const creating = ref(false)
@@ -65,11 +76,13 @@ async function submitCreate() {
       name: createForm.name,
       serialNumber: createForm.serialNumber,
       status: createForm.status,
+      category: createForm.category || undefined,
       description: createForm.description || undefined,
     })
     createForm.name = ''
     createForm.serialNumber = ''
     createForm.status = 'OFFLINE'
+    createForm.category = ''
     createForm.description = ''
     await load()
   } catch (e) {
@@ -81,7 +94,13 @@ async function submitCreate() {
 
 // ---- Edit ---------------------------------------------------------------
 const editing = ref<Device | null>(null)
-const editForm = reactive<DeviceInput>({ name: '', serialNumber: '', status: 'OFFLINE', description: '' })
+const editForm = reactive<DeviceInput>({
+  name: '',
+  serialNumber: '',
+  status: 'OFFLINE',
+  category: '',
+  description: '',
+})
 const savingEdit = ref(false)
 
 function openEdit(device: Device) {
@@ -89,6 +108,7 @@ function openEdit(device: Device) {
   editForm.name = device.name
   editForm.serialNumber = device.serialNumber
   editForm.status = device.status
+  editForm.category = device.category ?? ''
   editForm.description = device.description ?? ''
 }
 
@@ -101,6 +121,7 @@ async function submitEdit() {
       name: editForm.name,
       serialNumber: editForm.serialNumber,
       status: editForm.status,
+      category: editForm.category || undefined,
       description: editForm.description || undefined,
     })
     editing.value = null
@@ -135,7 +156,7 @@ onMounted(load)
       <!-- Create -->
       <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 class="mb-3 text-sm font-semibold text-slate-700">新增裝置</h2>
-        <form class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5" @submit.prevent="submitCreate">
+        <form class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6" @submit.prevent="submitCreate">
           <input
             v-model="createForm.name"
             required
@@ -154,6 +175,13 @@ onMounted(load)
           >
             <option v-for="s in DEVICE_STATUSES" :key="s" :value="s">{{ s }}</option>
           </select>
+          <select
+            v-model="createForm.category"
+            class="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+          >
+            <option value="">（無類別）</option>
+            <option v-for="c in DEVICE_CATEGORIES" :key="c" :value="c">{{ c }}</option>
+          </select>
           <input
             v-model="createForm.description"
             placeholder="描述(選填)"
@@ -171,16 +199,26 @@ onMounted(load)
 
       <!-- Filter + list -->
       <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
           <h2 class="text-sm font-semibold text-slate-700">裝置列表</h2>
-          <select
-            v-model="statusFilter"
-            class="rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
-            @change="load"
-          >
-            <option value="">全部狀態</option>
-            <option v-for="s in DEVICE_STATUSES" :key="s" :value="s">{{ s }}</option>
-          </select>
+          <div class="flex items-center gap-2">
+            <select
+              v-model="statusFilter"
+              class="rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+              @change="load"
+            >
+              <option value="">全部狀態</option>
+              <option v-for="s in DEVICE_STATUSES" :key="s" :value="s">{{ s }}</option>
+            </select>
+            <select
+              v-model="categoryFilter"
+              class="rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+              @change="load"
+            >
+              <option value="">全部類別</option>
+              <option v-for="c in DEVICE_CATEGORIES" :key="c" :value="c">{{ c }}</option>
+            </select>
+          </div>
         </div>
 
         <p v-if="error" class="px-4 py-3 text-sm text-red-600">{{ error }}</p>
@@ -195,6 +233,7 @@ onMounted(load)
               <th class="px-4 py-2 font-medium">名稱</th>
               <th class="px-4 py-2 font-medium">序號</th>
               <th class="px-4 py-2 font-medium">狀態</th>
+              <th class="px-4 py-2 font-medium">類別</th>
               <th class="px-4 py-2 font-medium">描述</th>
               <th class="px-4 py-2 text-right font-medium">操作</th>
             </tr>
@@ -208,6 +247,7 @@ onMounted(load)
                   {{ d.status }}
                 </span>
               </td>
+              <td class="px-4 py-2 text-slate-600">{{ d.category || '—' }}</td>
               <td class="px-4 py-2 text-slate-500">{{ d.description || '—' }}</td>
               <td class="px-4 py-2 text-right">
                 <button class="text-indigo-600 hover:underline" @click="openEdit(d)">編輯</button>
@@ -243,6 +283,13 @@ onMounted(load)
           <label class="text-sm text-slate-600">狀態</label>
           <select v-model="editForm.status" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
             <option v-for="s in DEVICE_STATUSES" :key="s" :value="s">{{ s }}</option>
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="text-sm text-slate-600">類別</label>
+          <select v-model="editForm.category" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
+            <option value="">（無類別）</option>
+            <option v-for="c in DEVICE_CATEGORIES" :key="c" :value="c">{{ c }}</option>
           </select>
         </div>
         <div class="space-y-1">

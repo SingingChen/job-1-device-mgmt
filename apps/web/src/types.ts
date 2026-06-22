@@ -20,6 +20,7 @@ export interface Device {
   name: string
   serialNumber: string
   status: DeviceStatus
+  category: string | null
   description: string | null
   lastSeenAt: string | null
   ownerId: string
@@ -31,7 +32,11 @@ export interface DeviceInput {
   name: string
   serialNumber: string
   status?: DeviceStatus
+  category?: string
   description?: string
 }
 
 export const DEVICE_STATUSES: DeviceStatus[] = ['ONLINE', 'OFFLINE', 'MAINTENANCE']
+
+// Suggested device categories (分類). Stored as free-form strings on the backend.
+export const DEVICE_CATEGORIES = ['感測器', '攝影機', '網路設備', '控制器', '其他']
