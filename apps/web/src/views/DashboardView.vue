@@ -34,9 +34,9 @@ const categoryCounts = computed(() => {
 })
 
 const STATUS_META: Record<DeviceStatus, { label: string; card: string; badge: string }> = {
-  ONLINE: { label: '線上', card: 'border-green-200 bg-green-50', badge: 'bg-green-100 text-green-700' },
-  OFFLINE: { label: '離線', card: 'border-slate-200 bg-slate-50', badge: 'bg-slate-100 text-slate-600' },
-  MAINTENANCE: { label: '維護中', card: 'border-amber-200 bg-amber-50', badge: 'bg-amber-100 text-amber-700' },
+  ONLINE: { label: '線上', card: 'border-green-500/30 bg-green-500/10', badge: 'bg-green-500/15 text-green-300' },
+  OFFLINE: { label: '離線', card: 'border-slate-700 bg-slate-800/60', badge: 'bg-slate-700 text-slate-300' },
+  MAINTENANCE: { label: '維護中', card: 'border-amber-500/30 bg-amber-500/10', badge: 'bg-amber-500/15 text-amber-300' },
 }
 const STATUS_ORDER: DeviceStatus[] = ['ONLINE', 'OFFLINE', 'MAINTENANCE']
 
@@ -61,69 +61,69 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50">
+  <div class="min-h-screen bg-slate-950">
     <AppHeader />
 
     <main class="mx-auto max-w-5xl space-y-6 px-4 py-6">
       <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-slate-800">Dashboard</h2>
+        <h2 class="text-lg font-semibold text-slate-100">Dashboard</h2>
         <RouterLink
           to="/devices"
-          class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-700"
+          class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-500"
         >
           管理裝置 →
         </RouterLink>
       </div>
 
-      <p v-if="error" class="rounded-md bg-red-50 px-4 py-3 text-sm text-red-600">{{ error }}</p>
-      <p v-if="loading" class="text-sm text-slate-400">載入中…</p>
+      <p v-if="error" class="rounded-md bg-red-500/10 px-4 py-3 text-sm text-red-400">{{ error }}</p>
+      <p v-if="loading" class="text-sm text-slate-500">載入中…</p>
 
       <template v-else>
         <!-- Summary cards -->
         <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p class="text-sm text-slate-500">裝置總數</p>
-            <p class="mt-1 text-3xl font-bold text-slate-800">{{ total }}</p>
+          <div class="rounded-xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
+            <p class="text-sm text-slate-400">裝置總數</p>
+            <p class="mt-1 text-3xl font-bold text-slate-100">{{ total }}</p>
           </div>
           <div
             v-for="s in STATUS_ORDER"
             :key="s"
             :class="['rounded-xl border p-4 shadow-sm', STATUS_META[s].card]"
           >
-            <p class="text-sm text-slate-500">{{ STATUS_META[s].label }}</p>
-            <p class="mt-1 text-3xl font-bold text-slate-800">{{ counts[s] }}</p>
+            <p class="text-sm text-slate-400">{{ STATUS_META[s].label }}</p>
+            <p class="mt-1 text-3xl font-bold text-slate-100">{{ counts[s] }}</p>
           </div>
         </section>
 
         <!-- Category breakdown -->
-        <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 class="mb-3 text-sm font-semibold text-slate-700">依類別</h3>
-          <p v-if="!categoryCounts.length" class="text-sm text-slate-400">尚無資料</p>
+        <section class="rounded-xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
+          <h3 class="mb-3 text-sm font-semibold text-slate-200">依類別</h3>
+          <p v-if="!categoryCounts.length" class="text-sm text-slate-500">尚無資料</p>
           <div v-else class="flex flex-wrap gap-2">
             <span
               v-for="[cat, n] in categoryCounts"
               :key="cat"
-              class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm"
+              class="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-sm"
             >
-              <span class="text-slate-700">{{ cat }}</span>
-              <span class="rounded-full bg-indigo-100 px-2 text-xs font-medium text-indigo-700">{{ n }}</span>
+              <span class="text-slate-200">{{ cat }}</span>
+              <span class="rounded-full bg-indigo-500/20 px-2 text-xs font-medium text-indigo-300">{{ n }}</span>
             </span>
           </div>
         </section>
 
         <!-- Recent devices -->
-        <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div class="border-b border-slate-100 px-4 py-3">
-            <h3 class="text-sm font-semibold text-slate-700">最近新增的裝置</h3>
+        <section class="rounded-xl border border-slate-800 bg-slate-900 shadow-sm">
+          <div class="border-b border-slate-800 px-4 py-3">
+            <h3 class="text-sm font-semibold text-slate-200">最近新增的裝置</h3>
           </div>
 
-          <p v-if="!recent.length" class="px-4 py-6 text-center text-sm text-slate-400">
+          <p v-if="!recent.length" class="px-4 py-6 text-center text-sm text-slate-500">
             目前沒有裝置,
-            <RouterLink to="/devices" class="text-indigo-600 hover:underline">前往新增</RouterLink>
+            <RouterLink to="/devices" class="text-indigo-400 hover:underline">前往新增</RouterLink>
           </p>
 
           <table v-else class="w-full text-sm">
-            <thead class="text-left text-xs uppercase text-slate-400">
+            <thead class="text-left text-xs uppercase text-slate-500">
               <tr>
                 <th class="px-4 py-2 font-medium">名稱</th>
                 <th class="px-4 py-2 font-medium">序號</th>
@@ -131,16 +131,16 @@ onMounted(load)
                 <th class="px-4 py-2 font-medium">建立時間</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody class="divide-y divide-slate-800">
               <tr v-for="d in recent" :key="d.id">
-                <td class="px-4 py-2 font-medium text-slate-800">{{ d.name }}</td>
-                <td class="px-4 py-2 font-mono text-xs text-slate-500">{{ d.serialNumber }}</td>
+                <td class="px-4 py-2 font-medium text-slate-100">{{ d.name }}</td>
+                <td class="px-4 py-2 font-mono text-xs text-slate-400">{{ d.serialNumber }}</td>
                 <td class="px-4 py-2">
                   <span :class="['rounded-full px-2 py-0.5 text-xs font-medium', STATUS_META[d.status].badge]">
                     {{ STATUS_META[d.status].label }}
                   </span>
                 </td>
-                <td class="px-4 py-2 text-slate-500">{{ new Date(d.createdAt).toLocaleString() }}</td>
+                <td class="px-4 py-2 text-slate-400">{{ new Date(d.createdAt).toLocaleString() }}</td>
               </tr>
             </tbody>
           </table>
