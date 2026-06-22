@@ -24,5 +24,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
+  // Export JwtModule so other modules (e.g. DeviceModule's SSE endpoint) can
+  // inject JwtService to verify tokens.
+  exports: [JwtModule],
 })
 export class AuthModule {}

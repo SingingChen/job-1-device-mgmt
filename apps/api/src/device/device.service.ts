@@ -6,16 +6,24 @@ import {
 import { Device, DeviceStatus, Prisma, Role } from '@prisma/client';
 import { AuthUser } from '../auth/types/auth-user';
 import { PrismaService } from '../prisma/prisma.service';
+import { DeviceEventsService } from './device-events.service';
 import { CreateDeviceDto } from './dto/create-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
 
 @Injectable()
 export class DeviceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: DeviceEventsService,
+  ) {}
 
   async create(dto: CreateDeviceDto, ownerId: string) {
     try {
-      return await this.prisma.device.create({ data: { ...dto, ownerId } });
+      const device = await this.prisma.device.create({
+        data: { ...dto, ownerId },
+      });
+      this.events.publish({ type: 'created', id: device.id, ownerId });
+      return device;
     } catch (e) {
       throw this.mapWriteError(e, dto.serialNumber);
     }
@@ -46,15 +54,25 @@ export class DeviceService {
   async update(id: string, dto: UpdateDeviceDto, user: AuthUser) {
     await this.findOne(id, user); // enforces ownership + clean 404
     try {
-      return await this.prisma.device.update({ where: { id }, data: dto });
+      const device = await this.prisma.device.update({
+        where: { id },
+        data: dto,
+      });
+      this.events.publish({
+        type: 'updated',
+        id: device.id,
+        ownerId: device.ownerId,
+      });
+      return device;
     } catch (e) {
       throw this.mapWriteError(e, dto.serialNumber);
     }
   }
 
   async remove(id: string, user: AuthUser) {
-    await this.findOne(id, user);
+    const device = await this.findOne(id, user);
     await this.prisma.device.delete({ where: { id } });
+    this.events.publish({ type: 'deleted', id, ownerId: device.ownerId });
     return { id };
   }
 
