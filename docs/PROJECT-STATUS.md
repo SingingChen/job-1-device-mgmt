@@ -43,6 +43,7 @@
 - [x] 前端:登入/註冊 + 裝置 CRUD UI + 路由守衛
 - [x] Dashboard 首頁(總數 / 各狀態統計 / 最近裝置)
 - [x] 裝置分類:`category` 欄位(後端 schema/migration + 前端表單/欄位/篩選)
+- [x] 即時更新:裝置變更事件經 GCP Pub/Sub 推播(SSE),跨實例/跨環境 fan-out;未設 `PUBSUB_TOPIC` 時回退 in-memory
 - [x] CI/CD:`deploy-web.yml`(push 改 `apps/web/**` → build → Firebase Hosting)
 - [x] 全棧瀏覽器實測通過;CORS 對線上網域驗證放行
 - [x] 文件:`backend-api-guide.md` + 全程 dev-log
