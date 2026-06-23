@@ -168,11 +168,56 @@ Body:CreateDeviceDto 的任意子集(全部選填)
 - 204:成功(無回應 body)
 - 404:不存在/非擁有者
 
+#### `GET /devices/events?token=<JWT>` — 即時事件(SSE)
+- Server-Sent Events 串流(`text/event-stream`),用於即時更新。
+- 認證:`EventSource` 無法帶 `Authorization` header,故 JWT 以 **query 參數 `token`** 傳入,於端點內驗證。
+- 推送內容:該使用者相關的裝置變更事件 `{ "type": "created|updated|deleted", "id", "ownerId" }`
+  (非 ADMIN 只收自己 `ownerId` 的事件)。事件為「**失效通知**」—— 前端收到後重抓 `GET /devices`。
+- 架構細節見下節。
+
 ### 錯誤回應格式(NestJS 標準)
 ```json
 { "statusCode": 400, "message": ["email must be an email"], "error": "Bad Request" }
 ```
 `message` 可能是字串或字串陣列(驗證錯誤時為陣列)。
+
+---
+
+## 5.5 即時更新架構(SSE + Pub/Sub)
+
+裝置變更會即時反映到開著的前端,不需手動重新整理。系統有**兩條獨立的路**:
+
+**① 寫入路徑(資料本身,request/response)**
+```
+瀏覽器 / seed → POST·PATCH·DELETE /devices → DeviceController → DeviceService
+            → Prisma → Cloud SQL(資料真正寫在這)→ 回傳結果
+```
+
+**② 即時通知路徑(只傳「有東西變了」的輕量訊號)**
+```
+DeviceService 寫完 DB → events.publish({type,id,ownerId})
+   → GCP Pub/Sub topic「cleo-device-events」
+   → Pub/Sub 廣播給「每個後端實例各自的 subscription」
+   → 各實例推進自己的 RxJS Subject → @Sse('events') 推給該實例連著的瀏覽器
+   → 瀏覽器 EventSource 收到 → 靜默重抓 GET /devices → 畫面更新
+```
+
+### Pub/Sub 與 SSE 的分工(兩者互補、缺一不可)
+
+| 元件 | 負責路段 | 為什麼需要 |
+|------|----------|-----------|
+| **GCP Pub/Sub** | 後端實例 ↔ 後端實例(server→server) | 把「有變更」廣播到**每一個**後端實例。瀏覽器的 SSE 可能連在實例 A,但變更由實例 B 處理;in-memory 匯流排跨不了 process,所以需要共用匯流排 |
+| **SSE** | 後端實例 → 瀏覽器(server→browser) | 最後一哩,真正把通知推進開著的網頁。瀏覽器無法直接連 Pub/Sub(無 client、需 GCP 憑證) |
+
+> 比喻:Pub/Sub 是各分店間的內部廣播;SSE 是分店打給客戶的電話。要讓「某處發生的事」傳到「特定客戶」,兩者都要。
+
+### 回退與設定
+- **未設 `PUBSUB_TOPIC`(本機 / 單實例)**:略過 Pub/Sub,in-memory Subject 直接餵 SSE。
+  Pub/Sub 只在「多實例 / 多環境」才發揮價值。
+- Pub/Sub 初始化失敗(topic/權限未備)會**自動回退 in-memory**,不會讓 API 啟動失敗。
+- 實作位置:`apps/api/src/device/device-events.service.ts`(`publish`/`stream` + 每實例專屬 subscription)、
+  `device.controller.ts`(`@Sse('events')`)、前端 `apps/web/src/lib/useDeviceStream.ts`。
+- Cloud Run 注意:請求逾時(預設 5 分鐘)會關閉 SSE 長連線,`EventSource` 會自動重連;Pub/Sub 免費額度足夠。
 
 ---
 
@@ -268,3 +313,4 @@ curl -s -o /dev/null -w "%{http_code}\n" "$URL/devices"
 - `lastSeenAt` 欄位存在但目前沒有自動更新邏輯(預留給未來的心跳/狀態回報)。
 - `serialNumber` 為**全域唯一**(非「每位使用者唯一」)。
 - 變更 Secret Manager 的值後,執行中的 Cloud Run revision 不會自動更新,需重新部署一版。
+- 即時更新為「事件通知 + 前端重抓」(Pub/Sub→SSE);裝置資料本身仍以 REST(`GET /devices`)為準。
