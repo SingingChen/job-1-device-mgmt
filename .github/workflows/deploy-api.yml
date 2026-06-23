@@ -64,5 +64,5 @@ jobs:
             --service-account "${{ vars.RUNTIME_SA }}" \
             --add-cloudsql-instances "${{ vars.INSTANCE_CONNECTION_NAME }}" \
             --set-secrets "DATABASE_URL=cleo-database-url:latest,JWT_SECRET=cleo-jwt-secret:latest" \
-            --set-env-vars "JWT_EXPIRES_IN=1d" \
+            --set-env-vars "JWT_EXPIRES_IN=1d,PUBSUB_TOPIC=cleo-device-events" \
             --allow-unauthenticated
