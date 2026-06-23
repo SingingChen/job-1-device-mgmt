@@ -1,7 +1,7 @@
 # 專案現況與接續指南
 
 > 給明天的自己 / 協作者:打開這份就能接上進度。歷史細節見 `docs/dev-log/`,
-> API 細節見 `docs/backend-api-guide.md`。最後更新:2026-06-18。
+> API 細節見 `docs/backend-api-guide.md`。最後更新:2026-06-23。
 
 ---
 
@@ -30,6 +30,8 @@
 | WIF pool / provider | `cleo-github` / `cleo-github-oidc` |
 | Firebase Hosting site | `cleo-device-mgmt` |
 | GitHub repo Variables | `GCP_PROJECT_ID`、`WIF_PROVIDER`、`DEPLOY_SA`、`RUNTIME_SA`、`INSTANCE_CONNECTION_NAME`、`WEB_API_BASE_URL` |
+| Pub/Sub(即時) | topic `cleo-device-events`(runtime SA 有 `roles/pubsub.editor`) |
+| Demo 帳號 | `demo@cleo.dev` / `Demo1234!`(展示用,已有資料) |
 
 ---
 
@@ -46,7 +48,9 @@
 - [x] 即時更新:裝置變更事件經 GCP Pub/Sub 推播(SSE),跨實例/跨環境 fan-out;未設 `PUBSUB_TOPIC` 時回退 in-memory
 - [x] CI/CD:`deploy-web.yml`(push 改 `apps/web/**` → build → Firebase Hosting)
 - [x] 全棧瀏覽器實測通過;CORS 對線上網域驗證放行
-- [x] 文件:`backend-api-guide.md` + 全程 dev-log
+- [x] 前端深色主題;Dashboard 依類別統計
+- [x] 工具:`npm run seed:devices`(批次建資料)、`npm run test:scenarios`(21 項情境測試 → `docs/test-report.md`)
+- [x] 文件:`backend-api-guide.md`(含即時/Pub/Sub 架構)+ 全程 dev-log
 
 ---
 
@@ -93,6 +97,8 @@ cd apps/api && DATABASE_URL="postgresql://postgres:PASS@127.0.0.1:5432/cleo-devi
 4. **功能擴充**:ADMIN 跨使用者檢視(後端 `GET /devices?ownerId=` 已支援)、裝置分頁/搜尋、
    表單即時驗證、token 過期前自動更新(目前無 refresh token,過期後 401 導回登入)。
 5. **測試**:補 auth/device 的單元與 e2e 測試(目前僅 scaffold)。
+6. **想看「本機」即時更新**:用線上站,或讓本機後端也設 `PUBSUB_TOPIC=cleo-device-events`(+ ADC)與雲端共用 topic。
+7. **驗跨實例 fan-out**:暫時 `gcloud run services update cleo-device-api --region asia-east1 --min-instances=2`,兩視窗各連一實例測試。
 
 ---
 
@@ -106,6 +112,7 @@ cd apps/api && DATABASE_URL="postgresql://postgres:PASS@127.0.0.1:5432/cleo-devi
   (待用 `/update-config` 排查)。
 - **commit 慣例**:功能與 dev-log 分兩個 commit(`feat/fix/ci/chore(...)` + `docs(dev-log): ...`)。
 - **共用 GCP 專案**:所有新建資源一律 `cleo-` 前綴。
+- **in-memory 事件不跨 process**:曾導致「雲端 seed、本機 SSE 收不到」;已改 GCP Pub/Sub 解決(跨實例/跨環境廣播)。即時功能 demo 請用線上站,勿混 localhost(本機前端打本機後端,與雲端是兩套各自獨立)。
 
 ---
 
@@ -114,4 +121,6 @@ cd apps/api && DATABASE_URL="postgresql://postgres:PASS@127.0.0.1:5432/cleo-devi
 - 後端:`apps/api/`(`src/`、`prisma/`、`Dockerfile`、`deploy/deploy-cloud-run.sh`、`deploy/github-actions-wif-setup.md`)
 - 前端:`apps/web/`(`src/`、`firebase.json`、`.firebaserc`、`deploy/firebase-setup.md`)
 - CI:`.github/workflows/deploy-api.yml`、`.github/workflows/deploy-web.yml`
+- 即時:`apps/api/src/device/device-events.service.ts`(Pub/Sub)、`device.controller.ts`(`@Sse`)、`apps/web/src/lib/useDeviceStream.ts`
+- 測試/種子:`apps/api/test/scenarios.mjs`、`apps/api/test/seed-devices.mjs`
 - 文件:`docs/backend-api-guide.md`、`docs/dev-log/*`、本檔 `docs/PROJECT-STATUS.md`
