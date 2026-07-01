@@ -26,7 +26,7 @@
 | Artifact Registry | `cleo-containers` |
 | Cloud SQL | `machine-status-494306:asia-east1:cleo-device-mgmt`,db `cleo-device-mgmt`,user `postgres` |
 | Secrets | `cleo-database-url`、`cleo-jwt-secret`(Secret Manager) |
-| 部署 SA / 執行 SA | `cleo-gha-deployer` / `cleo-device-api` |
+| 部署 SA / 執行 SA | `cleo-gha-deployer`(有 `roles/serviceusage.serviceUsageConsumer`,web REST 部署需要) / `cleo-device-api` |
 | WIF pool / provider | `cleo-github` / `cleo-github-oidc` |
 | Firebase Hosting site | `cleo-device-mgmt` |
 | GitHub repo Variables | `GCP_PROJECT_ID`、`WIF_PROVIDER`、`DEPLOY_SA`、`RUNTIME_SA`、`INSTANCE_CONNECTION_NAME`、`WEB_API_BASE_URL` |
@@ -114,6 +114,8 @@ cd apps/api && DATABASE_URL="postgresql://postgres:PASS@127.0.0.1:5432/cleo-devi
   (待用 `/update-config` 排查)。
 - **commit 慣例**:功能與 dev-log 分兩個 commit(`feat/fix/ci/chore(...)` + `docs(dev-log): ...`)。
 - **共用 GCP 專案**:所有新建資源一律 `cleo-` 前綴。
+- **web 部署不再用 `firebase deploy`**:firebase-tools 解析 WIF(external_account)ADC 會超時,丟「have you run firebase login?」(firebase/firebase-tools#10726)。改走 Hosting REST API(`apps/web/deploy/hosting-deploy.mjs` + auth `token_format: access_token`),維持免金鑰。API 部署不受影響。手動補部署:`cd apps/web && npm run build && HOSTING_TOKEN=$(gcloud auth print-access-token) node deploy/hosting-deploy.mjs`。
+- **破壞性變更分兩條 pipeline 部署有短暫不一致**:前後端各自 CI,部署那幾分鐘可能「新前端 vs 舊後端」。若某條 CI 失敗要儘速補另一端(如手動部署)以恢復一致。
 - **in-memory 事件不跨 process**:曾導致「雲端 seed、本機 SSE 收不到」;已改 GCP Pub/Sub 解決(跨實例/跨環境廣播)。即時功能 demo 請用線上站,勿混 localhost(本機前端打本機後端,與雲端是兩套各自獨立)。
 
 ---
