@@ -74,6 +74,19 @@ async function req(method, path, { token, body } = {}) {
   rec('D8', '缺必填欄位(無序號)', 400, (await req('POST', '/devices', { token: tokA, body: { name: 'no-serial' } })).status)
   rec('D9', '未帶 token 取裝置', 401, (await req('GET', '/devices')).status)
 
+  // ---- 列表分頁 / 搜尋 / 統計 ----
+  const listRes = await req('GET', '/devices?pageSize=1', { token: tokA })
+  const lp = listRes.json
+  rec('D11', '列表回傳分頁結構', true, Array.isArray(lp?.items) && typeof lp?.total === 'number' && typeof lp?.page === 'number')
+  rec('D12', '分頁 pageSize=1 生效', true, lp?.pageSize === 1 && lp.items.length <= 1)
+  const searchRes = await req('GET', `/devices?search=QA-${ts}`, { token: tokA })
+  rec('D13', '依序號搜尋命中', true, (searchRes.json?.items ?? []).some((d) => d.serialNumber === `QA-${ts}`))
+  const ciRes = await req('GET', '/devices?search=qa%20device', { token: tokA })
+  rec('D14', '搜尋不分大小寫(名稱)', true, (ciRes.json?.total ?? 0) >= 1)
+  const statsRes = await req('GET', '/devices/stats', { token: tokA })
+  const st = statsRes.json
+  rec('D15', '統計端點(total/byStatus/byCategory)', true, statsRes.status === 200 && typeof st?.total === 'number' && !!st?.byStatus && Array.isArray(st?.byCategory))
+
   // ---- 資料隔離 ----
   const devB = await req('POST', '/devices', { token: tokB, body: { name: 'B Device', serialNumber: `QB-${ts}` } })
   const didB = devB.json?.id

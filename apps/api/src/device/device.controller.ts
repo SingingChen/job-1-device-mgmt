@@ -70,6 +70,16 @@ export class DeviceController {
     );
   }
 
+  /**
+   * Aggregated dashboard stats (total / per-status / per-category / recent).
+   * Declared before the `:id` route so "stats" is not captured as an id.
+   */
+  @Get('stats')
+  @UseGuards(JwtAuthGuard)
+  stats(@CurrentUser() user: AuthUser, @Query('ownerId') ownerId?: string) {
+    return this.deviceService.stats(user, ownerId);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   findOne(@CurrentUser() user: AuthUser, @Param('id') id: string) {

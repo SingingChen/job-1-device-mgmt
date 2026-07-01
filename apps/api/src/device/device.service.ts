@@ -29,17 +29,102 @@ export class DeviceService {
     }
   }
 
-  findAll(
+  async findAll(
     user: AuthUser,
-    filters: { status?: DeviceStatus; category?: string; ownerId?: string },
+    filters: {
+      status?: DeviceStatus;
+      category?: string;
+      ownerId?: string;
+      search?: string;
+      page?: number;
+      pageSize?: number;
+    },
   ) {
-    // Non-admins are scoped to their own devices; admins may optionally filter
-    // by ownerId, and otherwise see all.
+    const where = this.scopedWhere(user, filters);
+    const page = Math.max(1, filters.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 10));
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.device.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.device.count({ where }),
+    ]);
+
+    return { items, total, page, pageSize };
+  }
+
+  /** Aggregated counts for the dashboard, scoped to the user (admins: all). */
+  async stats(user: AuthUser, ownerId?: string) {
+    const where = this.scopedWhere(user, { ownerId });
+
+    const [total, byStatusRaw, byCategoryRaw, recent] = await Promise.all([
+      this.prisma.device.count({ where }),
+      this.prisma.device.groupBy({
+        by: ['status'],
+        where,
+        _count: { _all: true },
+      }),
+      this.prisma.device.groupBy({
+        by: ['category'],
+        where,
+        _count: { _all: true },
+      }),
+      this.prisma.device.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+    ]);
+
+    const byStatus: Record<DeviceStatus, number> = {
+      ONLINE: 0,
+      OFFLINE: 0,
+      MAINTENANCE: 0,
+    };
+    for (const row of byStatusRaw) byStatus[row.status] = row._count._all;
+
+    const byCategory = byCategoryRaw
+      .map((row) => ({
+        category: row.category ?? '未分類',
+        count: row._count._all,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    return { total, byStatus, byCategory, recent };
+  }
+
+  /**
+   * Build the Prisma `where` enforcing data isolation: non-admins are scoped to
+   * their own devices; admins may optionally filter by ownerId, else see all.
+   */
+  private scopedWhere(
+    user: AuthUser,
+    filters: {
+      status?: DeviceStatus;
+      category?: string;
+      ownerId?: string;
+      search?: string;
+    },
+  ): Prisma.DeviceWhereInput {
     const ownerId = user.role === Role.ADMIN ? filters.ownerId : user.id;
-    return this.prisma.device.findMany({
-      where: { status: filters.status, category: filters.category, ownerId },
-      orderBy: { createdAt: 'desc' },
-    });
+    const search = filters.search?.trim();
+    return {
+      status: filters.status,
+      category: filters.category,
+      ownerId,
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { serialNumber: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
   }
 
   async findOne(id: string, user: AuthUser) {
