@@ -48,10 +48,17 @@ jobs:
           project_id: ${{ vars.GCP_PROJECT_ID }}
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.DEPLOY_SA }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
 
-      - name: Deploy to Firebase Hosting
-        run: >-
-          npx firebase-tools@13 deploy
-          --only hosting:cleo-device-mgmt
-          --project ${{ vars.GCP_PROJECT_ID }}
-          --non-interactive
+      # Deploy via the Hosting REST API with the minted access token instead of
+      # `firebase deploy`: firebase-tools times out resolving WIF (external
+      # account) ADC and fails with "have you run firebase login?", and it does
+      # not accept a pre-minted bearer token. This keeps us keyless (no
+      # FIREBASE_TOKEN / SA key). See firebase/firebase-tools#10726.
+      - name: Deploy to Firebase Hosting (REST, keyless)
+        run: node deploy/hosting-deploy.mjs
+        env:
+          HOSTING_TOKEN: ${{ steps.auth.outputs.access_token }}
+          SITE: cleo-device-mgmt
+          PROJECT: ${{ vars.GCP_PROJECT_ID }}
