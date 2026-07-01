@@ -28,6 +28,22 @@ export interface Device {
   updatedAt: string
 }
 
+// Paginated list envelope returned by GET /devices.
+export interface DevicePage {
+  items: Device[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+// Aggregated dashboard stats returned by GET /devices/stats.
+export interface DeviceStats {
+  total: number
+  byStatus: Record<DeviceStatus, number>
+  byCategory: { category: string; count: number }[]
+  recent: Device[]
+}
+
 export interface DeviceInput {
   name: string
   serialNumber: string

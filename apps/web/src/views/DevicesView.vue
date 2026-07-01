@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import { ApiError } from '@/lib/api'
@@ -27,6 +27,15 @@ const loading = ref(false)
 const error = ref('')
 const statusFilter = ref<DeviceStatus | ''>('')
 const categoryFilter = ref('')
+const search = ref('')
+
+// Pagination
+const page = ref(1)
+const pageSize = 10
+const total = ref(0)
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+const rangeStart = computed(() => (total.value === 0 ? 0 : (page.value - 1) * pageSize + 1))
+const rangeEnd = computed(() => Math.min(page.value * pageSize, total.value))
 
 const STATUS_BADGE: Record<DeviceStatus, string> = {
   ONLINE: 'bg-green-500/15 text-green-300',
@@ -51,16 +60,49 @@ async function load(silent = false) {
   if (!silent) loading.value = true
   error.value = ''
   try {
-    devices.value = await listDevices({
+    const res = await listDevices({
       status: statusFilter.value || undefined,
       category: categoryFilter.value || undefined,
+      search: search.value.trim() || undefined,
+      page: page.value,
+      pageSize,
     })
+    // The current page can fall out of range after deletes or filter changes;
+    // clamp and refetch so the list never shows up empty on a valid dataset.
+    const pages = Math.max(1, Math.ceil(res.total / pageSize))
+    if (page.value > pages) {
+      page.value = pages
+      return load(silent)
+    }
+    devices.value = res.items
+    total.value = res.total
   } catch (e) {
     handleError(e)
   } finally {
     if (!silent) loading.value = false
   }
 }
+
+// Reset to the first page whenever filters/search change, then reload.
+function applyFilters() {
+  page.value = 1
+  load()
+}
+
+function goToPage(n: number) {
+  const target = Math.min(Math.max(1, n), totalPages.value)
+  if (target === page.value) return
+  page.value = target
+  load()
+}
+
+// Debounce search input so we don't fire a request on every keystroke.
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+function onSearchInput() {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(applyFilters, 300)
+}
+onUnmounted(() => clearTimeout(searchTimer))
 
 // ---- Create -------------------------------------------------------------
 const createForm = reactive<DeviceInput>({
@@ -88,6 +130,7 @@ async function submitCreate() {
     createForm.status = 'OFFLINE'
     createForm.category = ''
     createForm.description = ''
+    page.value = 1 // newest device lives on the first page
     await load()
   } catch (e) {
     handleError(e)
@@ -187,12 +230,18 @@ useDeviceStream(() => load(true))
       <section class="rounded-xl border border-slate-800 bg-slate-900 shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
           <h2 class="text-sm font-semibold text-slate-200">裝置列表</h2>
-          <div class="flex items-center gap-2">
-            <select v-model="statusFilter" class="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 focus:border-indigo-400 focus:outline-none" @change="load()">
+          <div class="flex flex-wrap items-center gap-2">
+            <input
+              v-model="search"
+              placeholder="搜尋名稱 / 序號"
+              class="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-400 focus:outline-none"
+              @input="onSearchInput"
+            />
+            <select v-model="statusFilter" class="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 focus:border-indigo-400 focus:outline-none" @change="applyFilters()">
               <option value="">全部狀態</option>
               <option v-for="s in DEVICE_STATUSES" :key="s" :value="s">{{ s }}</option>
             </select>
-            <select v-model="categoryFilter" class="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 focus:border-indigo-400 focus:outline-none" @change="load()">
+            <select v-model="categoryFilter" class="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 focus:border-indigo-400 focus:outline-none" @change="applyFilters()">
               <option value="">全部類別</option>
               <option v-for="c in DEVICE_CATEGORIES" :key="c" :value="c">{{ c }}</option>
             </select>
@@ -202,7 +251,7 @@ useDeviceStream(() => load(true))
         <p v-if="error" class="px-4 py-3 text-sm text-red-400">{{ error }}</p>
         <p v-if="loading" class="px-4 py-6 text-center text-sm text-slate-500">載入中…</p>
         <p v-else-if="!devices.length" class="px-4 py-6 text-center text-sm text-slate-500">
-          目前沒有裝置
+          {{ search || statusFilter || categoryFilter ? '沒有符合條件的裝置' : '目前沒有裝置' }}
         </p>
 
         <table v-else class="w-full text-sm">
@@ -234,6 +283,31 @@ useDeviceStream(() => load(true))
             </tr>
           </tbody>
         </table>
+
+        <!-- Pagination -->
+        <div
+          v-if="!loading && total > 0"
+          class="flex items-center justify-between border-t border-slate-800 px-4 py-3 text-sm text-slate-400"
+        >
+          <span>第 {{ rangeStart }}–{{ rangeEnd }} 筆,共 {{ total }} 筆</span>
+          <div class="flex items-center gap-2">
+            <button
+              class="rounded-md border border-slate-700 px-3 py-1 text-slate-300 transition hover:bg-slate-800 disabled:opacity-40"
+              :disabled="page <= 1"
+              @click="goToPage(page - 1)"
+            >
+              上一頁
+            </button>
+            <span class="text-slate-300">{{ page }} / {{ totalPages }}</span>
+            <button
+              class="rounded-md border border-slate-700 px-3 py-1 text-slate-300 transition hover:bg-slate-800 disabled:opacity-40"
+              :disabled="page >= totalPages"
+              @click="goToPage(page + 1)"
+            >
+              下一頁
+            </button>
+          </div>
+        </div>
       </section>
     </main>
 

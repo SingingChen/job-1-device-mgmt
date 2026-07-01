@@ -3,36 +3,27 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import { ApiError } from '@/lib/api'
-import { listDevices } from '@/lib/devices'
+import { getDeviceStats } from '@/lib/devices'
 import { useDeviceStream } from '@/lib/useDeviceStream'
 import { useAuthStore } from '@/stores/auth'
-import type { Device, DeviceStatus } from '@/types'
+import type { DeviceStats, DeviceStatus } from '@/types'
 
 const auth = useAuthStore()
 const router = useRouter()
 
-const devices = ref<Device[]>([])
+const stats = ref<DeviceStats | null>(null)
 const loading = ref(false)
 const error = ref('')
 
-const total = computed(() => devices.value.length)
-const counts = computed(() => {
-  const c: Record<DeviceStatus, number> = { ONLINE: 0, OFFLINE: 0, MAINTENANCE: 0 }
-  for (const d of devices.value) c[d.status]++
-  return c
-})
-// listDevices() returns newest first (createdAt desc), so the head is "recent".
-const recent = computed(() => devices.value.slice(0, 5))
-
-// Count devices per category (null category grouped as 未分類), sorted desc.
-const categoryCounts = computed(() => {
-  const m = new Map<string, number>()
-  for (const d of devices.value) {
-    const key = d.category ?? '未分類'
-    m.set(key, (m.get(key) ?? 0) + 1)
-  }
-  return [...m.entries()].sort((a, b) => b[1] - a[1])
-})
+const total = computed(() => stats.value?.total ?? 0)
+const counts = computed<Record<DeviceStatus, number>>(
+  () => stats.value?.byStatus ?? { ONLINE: 0, OFFLINE: 0, MAINTENANCE: 0 },
+)
+const recent = computed(() => stats.value?.recent ?? [])
+// Server already returns categories sorted by count desc.
+const categoryCounts = computed(() =>
+  (stats.value?.byCategory ?? []).map((c) => [c.category, c.count] as const),
+)
 
 const STATUS_META: Record<DeviceStatus, { label: string; card: string; badge: string }> = {
   ONLINE: { label: '線上', card: 'border-green-500/30 bg-green-500/10', badge: 'bg-green-500/15 text-green-300' },
@@ -45,7 +36,7 @@ async function load(silent = false) {
   if (!silent) loading.value = true
   error.value = ''
   try {
-    devices.value = await listDevices()
+    stats.value = await getDeviceStats()
   } catch (e) {
     if (e instanceof ApiError && e.status === 401) {
       auth.logout()
