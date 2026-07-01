@@ -1,7 +1,7 @@
 # 專案現況與接續指南
 
 > 給明天的自己 / 協作者:打開這份就能接上進度。歷史細節見 `docs/dev-log/`,
-> API 細節見 `docs/backend-api-guide.md`。最後更新:2026-06-23。
+> API 細節見 `docs/backend-api-guide.md`。最後更新:2026-06-24。
 
 ---
 
@@ -49,7 +49,8 @@
 - [x] CI/CD:`deploy-web.yml`(push 改 `apps/web/**` → build → Firebase Hosting)
 - [x] 全棧瀏覽器實測通過;CORS 對線上網域驗證放行
 - [x] 前端深色主題;Dashboard 依類別統計
-- [x] 工具:`npm run seed:devices`(批次建資料)、`npm run test:scenarios`(21 項情境測試 → `docs/test-report.md`)
+- [x] 裝置列表分頁 + 模糊搜尋(name/serialNumber);Dashboard 改用 `GET /devices/stats`(DB 端聚合)
+- [x] 工具:`npm run seed:devices`(批次建資料)、`npm run test:scenarios`(26 項情境測試 → `docs/test-report.md`)
 - [x] 文件:`backend-api-guide.md`(含即時/Pub/Sub 架構)+ 全程 dev-log
 
 ---
@@ -94,8 +95,9 @@ cd apps/api && DATABASE_URL="postgresql://postgres:PASS@127.0.0.1:5432/cleo-devi
 2. **清測試資料**:prod DB 的 `cleo-e2e-*@example.com`、`cleo.chen@dynascan365.com`
    測試帳號與其裝置。
 3. **消除 Node 20 警告**:CI 的 actions 被強制跑在 Node 24(純 cosmetic),可升級 action 版本。
-4. **功能擴充**:ADMIN 跨使用者檢視(後端 `GET /devices?ownerId=` 已支援)、裝置分頁/搜尋、
+4. **功能擴充**:ADMIN 跨使用者檢視(後端 `GET /devices?ownerId=` 已支援,前端待補)、
    表單即時驗證、token 過期前自動更新(目前無 refresh token,過期後 401 導回登入)。
+   ~~裝置分頁/搜尋~~(已完成 2026-06-24)。
 5. **測試**:補 auth/device 的單元與 e2e 測試(目前僅 scaffold)。
 6. **想看「本機」即時更新**:用線上站,或讓本機後端也設 `PUBSUB_TOPIC=cleo-device-events`(+ ADC)與雲端共用 topic。
 7. **驗跨實例 fan-out**:暫時 `gcloud run services update cleo-device-api --region asia-east1 --min-instances=2`,兩視窗各連一實例測試。

@@ -147,12 +147,32 @@ Body:
 - 400:驗證失敗
 - 409:`serialNumber` 已存在
 
-#### `GET /devices` — 列出裝置
+#### `GET /devices` — 列出裝置(分頁)
 Query(皆選填):
 - `status`:`ONLINE|OFFLINE|MAINTENANCE`
 - `category`:依類別篩選(精確比對)
+- `search`:模糊搜尋,比對 `name` 與 `serialNumber`(不分大小寫,子字串)
 - `ownerId`:**僅 ADMIN 有效**(USER 一律只看自己的)
-- 200:Device 陣列(依 `createdAt` 由新到舊)
+- `page`:頁碼(1 起算,預設 `1`)
+- `pageSize`:每頁筆數(預設 `10`,上限 `100`)
+- 200:**分頁封包**(非裸陣列),`items` 依 `createdAt` 由新到舊:
+```json
+{ "items": [ /* Device[] */ ], "total": 42, "page": 1, "pageSize": 10 }
+```
+> ⚠️ 此為相對舊版的破壞性變更(原本回傳裸陣列)。前端請讀 `res.items`。
+
+#### `GET /devices/stats` — 儀表板統計
+依使用者範圍聚合(USER 只算自己;ADMIN 可用 `ownerId` 篩選,不帶則全部)。在 DB 端以 `groupBy` 計算,不撈全表。
+- 200:
+```json
+{
+  "total": 42,
+  "byStatus": { "ONLINE": 10, "OFFLINE": 25, "MAINTENANCE": 7 },
+  "byCategory": [ { "category": "感測器", "count": 20 }, { "category": "未分類", "count": 3 } ],
+  "recent": [ /* 最新 5 筆 Device */ ]
+}
+```
+（`byCategory` 依 `count` 由大到小排序;`category` 為 null 的歸為 `未分類`）
 
 #### `GET /devices/:id` — 取得單筆
 - 200:Device
